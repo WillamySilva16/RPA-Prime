@@ -1,11 +1,7 @@
 name: Executar RPA PrimeBuilder
 
 on:
-  # Permite rodar o script manualmente pelo botão no GitHub
   workflow_dispatch:
-
-  # Agendamento automático (Cronjob UTC)
-  # Exemplo: Roda de segunda a sexta às 08:00 BRT (11:00 UTC)
   schedule:
     - cron: '0 11 * * 1-5'
 
@@ -18,31 +14,49 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # 2. Configura a versão do Python
+      # 2. Instala os Drivers do SQL Server e o Google Chrome (para o Selenium)
+      - name: Instalar Drivers do SQL Server e Chrome
+        run: |
+          sudo apt-get update
+          
+          # Instalação do Microsoft ODBC Driver 17 para SQL Server
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev
+
+          # Instalação do Google Chrome (necessário para o Selenium)
+          sudo apt-get install -y wget
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
+
+      # 3. Configura o Python
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # 3. Instala as dependências listadas no seu requirements.txt
-      - name: Instalar dependências
+      # 4. Instala as dependências do Python
+      - name: Instalar dependências Python
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # 4. (Opcional) Reconstruir pasta CHAVES/ ou arquivo .json de credenciais GCP via Secret
-      # - name: Criar arquivo de credenciais GCP
+      # 5. Se o seu script precisar da pasta CHAVES com o JSON do GCP, recrie aqui:
+      # - name: Criar pasta CHAVES e JSON
       #   run: |
       #     mkdir -p CHAVES
       #     echo "${{ secrets.GCP_CREDENTIALS_JSON }}" > CHAVES/attrprime.json
 
-      # 5. Executa a automação injetando os Secrets como Variáveis de Ambiente
+      # 6. Executa a automação injetando as variáveis de ambiente
       - name: Rodar RPA
         env:
-          # Mapeie aqui suas Secrets para o Python ler via os.getenv()
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          # Adicione as outras variáveis necessárias aqui
+          DB_NAME: ${{ secrets.DB_NAME }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          SHEET_NAME: ${{ secrets.SHEET_NAME }}
+          # Adicione outras Secrets aqui caso seu script precise delas
         run: |
           python main.py
