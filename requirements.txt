@@ -1,0 +1,7 @@
+sqlalchemy
+pyodbc
+gspread
+google-auth
+selenium
+python-dotenv
+rich

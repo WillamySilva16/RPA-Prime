@@ -1,0 +1,35 @@
+services:
+
+  rpa_prime:
+    build: .
+    container_name: rpa_prime
+    env_file:
+      - .env
+    volumes:
+      - ./CHAVES:/app/CHAVES:ro
+      - ./output.csv:/app/output.csv
+      - ./debug:/app/debug
+    environment:
+      - TZ=America/Sao_Paulo
+    shm_size: "1gb"
+    command: tail -f /dev/null
+    labels:
+      ofelia.enabled: "true"
+      # Roda todo dia às 08:00
+      ofelia.job-exec.rpa_prime_manha.schedule: "0 8 * * *"
+      ofelia.job-exec.rpa_prime_manha.command: "python main.py"
+      # Roda todo dia às 17:00
+      ofelia.job-exec.rpa_prime_tarde.schedule: "0 17 * * *"
+      ofelia.job-exec.rpa_prime_tarde.command: "python main.py"
+
+  ofelia:
+    image: mcuadros/ofelia:latest
+    container_name: ofelia_prime
+    depends_on:
+      - rpa_prime
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=America/Sao_Paulo
+    command: daemon --docker
+    restart: unless-stopped
